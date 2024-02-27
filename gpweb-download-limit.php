@@ -13,9 +13,9 @@ function gpweb_download_limit_activate()
 }
 
 
-add_action('woocommerce_checkout_process', 'gpweb_free_download_limit_check2', 10, 2);
+add_action('woocommerce_checkout_process', 'gpweb_free_download_limit_check', 10, 2);
 
-function gpweb_free_download_limit_check2()
+function gpweb_free_download_limit_check()
 {
     $count_free_download = 0;
 
@@ -85,3 +85,45 @@ function gpweb_get_free_downloads_today()
 }
 
 add_shortcode('free_downloads_remaining', 'gpweb_get_free_downloads_remaining');
+
+add_action('wc_ajax_download_free_file', 'download_free_file_action');
+function download_free_file_action()
+{
+    if (!isset($_POST['product_id'])) {
+        return;
+    }
+
+    $product_id = $_POST['product_id'];
+    $product = wc_get_product($product_id);
+    if (!$product || $product->get_price() != 0) {
+        wp_send_json(["message" => "Sản phẩm không hợp lệ."]);
+        return;
+    }
+
+    if (gpweb_get_free_downloads_remaining() <= 0) {
+        wp_send_json(["message" => "Hết lượt tải miễn phí."]);
+        return;
+    }
+
+    $order = wc_create_order();
+    $order->set_customer_id(get_current_user_id());
+    $order->add_product($product, 1);
+    $order->calculate_totals();
+    $order->set_status("completed");
+    $order->save();
+
+    $items = $order->get_items();
+    $item = reset($items);
+    $downloads = $item->get_item_downloads();
+    if (!empty($downloads)) {
+        $download = reset($downloads);
+        wp_send_json([
+            "file_name" => $download["name"],
+            "download_url" => $download["download_url"],
+        ]);
+        return;
+    }
+
+    wp_send_json(["message" => "Sản phẩm không có tệp tải về."]);
+
+}
