@@ -9,7 +9,7 @@ Author: Le Ngan
 register_activation_hook(__FILE__, 'gpweb_download_limit_activate');
 function gpweb_download_limit_activate()
 {
-    update_option('default_free_downloads_per_day', 20);
+    update_option('default_free_downloads_per_day', 50);
 }
 
 
